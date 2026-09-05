@@ -1,78 +1,144 @@
-from mylogging import logging
+from mylogging import logging as logger
 from myexception import customexception
-import os
-import sys
 import pandas as pd
-import joblib
 import yaml
-from sklearn.linear_model import LogisticRegression
+import joblib
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.preprocessing import PowerTransformer
+from sklearn.ensemble import RandomForestRegressor
+from lightgbm import LGBMRegressor
+from sklearn.linear_model import LinearRegression
+from pathlib import Path
+from sklearn.ensemble import StackingRegressor
+
+TARGET = "time_taken"
 
 
-def load_params(params_path: str) -> dict:
+def load_data(data_path: Path) -> pd.DataFrame:
     try:
-        with open(params_path, 'r') as file:
-            params = yaml.safe_load(file)
-        logging.info("Parameters loaded from %s", params_path)
-        return params
-    except Exception as e:
-        logging.info("Error loading params.yaml")
-        raise customexception(e, sys)
+        df = pd.read_csv(data_path)
+        return df
+    except FileNotFoundError:
+        logger.error(f"The file to load does not exist: {data_path}")
+        raise FileNotFoundError(f"Data file not found at {data_path}")
 
 
-def load_data(file_path: str):
-    try:
-        df = pd.read_csv(file_path)
-        X = df.drop(columns=["sentiment"]).values
-        y = df["sentiment"].values
-        logging.info("Data loaded from %s", file_path)
-        return X, y
-    except Exception as e:
-        logging.info(f"Error loading data from {file_path}")
-        raise customexception(e, sys)
+def read_params(file_path):
+    with open(file_path,"r") as f:
+        params_file = yaml.safe_load(f)
+    
+    return params_file
 
 
-def train_model(X_train, y_train, model_params):
-    try:
-        model = LogisticRegression(**model_params)
-        model.fit(X_train, y_train)
-        logging.info("Model training completed.")
-        return model
-    except Exception as e:
-        logging.info("Error during model training.")
-        raise customexception(e, sys)
+def save_model(model, save_dir: Path, model_name: str):
+    # form the save location
+    save_location = save_dir / model_name
+    # save the model
+    joblib.dump(value=model,filename=save_location)
+    
+    
+def save_transformer(transformer, save_dir: Path, transformer_name: str):
+    # form the save location
+    save_location = save_dir / transformer_name
+    # save the transformer
+    joblib.dump(transformer, save_location)
+    
+    
+def train_model(model, X_train: pd.DataFrame, y_train):
+    # fit on the data
+    model.fit(X_train,y_train)
+    return model
 
 
-def save_model(model, model_path):
-    try:
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        joblib.dump(model, model_path)
-        logging.info(f"Model saved at {model_path}")
-    except Exception as e:
-        logging.info("Error saving model.")
-        raise customexception(e, sys)
+def make_X_and_y(data:pd.DataFrame, target_column: str):
+    X = data.drop(columns=[target_column])
+    y = data[target_column]
+    return X, y
 
-
-def main():
-    try:
-        params = load_params("params.yaml")
-        trainer_params = params['model_trainer']
-        model_params = trainer_params['model_params']
-
-        input_train = trainer_params['input_train']
-        output_model_path = trainer_params['output_model_path']
-
-        X_train, y_train = load_data(input_train)
-
-        model = train_model(X_train, y_train, model_params)
-
-        save_model(model, output_model_path)
-
-        logging.info("Model training pipeline completed.")
-
-    except Exception as e:
-        logging.info("Exception in model_trainer main function.")
-        raise customexception(e, sys)
 
 
 if __name__ == "__main__":
-    main()
+    # root path
+    root_path = Path.cwd()
+    # train data load path
+    data_path = root_path / "artifacts" / "data" / "processed" / "train_trans.csv"
+    # parameters file
+    params_file_path = root_path / "params.yaml"
+    
+    # load the training data
+    training_data = load_data(data_path)
+    logger.info("Training Data read successfully")
+    
+    # split the data into X and y
+    X_train, y_train = make_X_and_y(training_data, TARGET)
+    logger.info("Dataset splitting completed")
+    
+    # model parameters
+    model_params = read_params(params_file_path)['train']
+    
+    # rf_params
+    rf_params = model_params['Random_Forest']
+    logger.info("random forest parameters read")
+    
+    # build random forest model
+    rf = RandomForestRegressor(**rf_params)
+    logger.info("built random forest model")
+    
+    # light gbm params
+    lgbm_params = model_params["LightGBM"]
+    logger.info("Light GBM parameters read")
+    lgbm = LGBMRegressor(**lgbm_params)
+    logger.info("built Light GBM model")
+    
+    # meta model
+    lr = LinearRegression()
+    logger.info("Meta model built")
+    
+    # power transformer
+    power_transform = PowerTransformer()
+    logger.info("Target Transformer built")
+    
+    # form the stacking regressor
+    stacking_reg = StackingRegressor(estimators=[("rf_model",rf),
+                                                 ("lgbm_model",lgbm)],
+                                     final_estimator=lr,
+                                     cv=5,n_jobs=-1)
+    logger.info("Stacking regressor built")
+    
+    # make the model wrapper
+    model = TransformedTargetRegressor(regressor=stacking_reg,
+                                       transformer=power_transform)
+    logger.info("Models wrapped inside wrapper")
+    
+    # fit the model on training data
+    train_model(model,X_train,y_train)
+    logger.info("Model training completed")
+    
+    # model name
+    model_filename = "model.joblib"
+    # directory to save model
+    model_save_dir = root_path / "artifacts" / "models"
+    model_save_dir.mkdir(exist_ok=True)
+    
+    # extract the model from wrapper
+    stacking_model = model.regressor_
+    transformer = model.transformer_
+
+    # save the model
+    save_model(model=model,
+            save_dir=model_save_dir,
+            model_name=model_filename)
+    logger.info("Trained model saved to location")
+    
+    # save the stacking model
+    stacking_filename = "stacking_regressor.joblib"
+    save_model(model=stacking_model,
+            save_dir=model_save_dir,
+            model_name=stacking_filename)
+    logger.info("Trained model saved to location")
+    
+    # save the transformer
+    transformer_filename = "power_transformer.joblib"
+    transformer_save_dir = model_save_dir
+    save_transformer(transformer, transformer_save_dir, transformer_filename)
+    logger.info("Transformer saved to location")

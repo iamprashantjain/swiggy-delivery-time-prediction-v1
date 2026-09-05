@@ -1,0 +1,62 @@
+stages:
+  data_cleaning:
+    cmd: python src/1_data_cleaning.py
+    deps:
+    - artifacts/data/raw/swiggy.csv
+    - src/1_data_cleaning.py
+    outs:
+    - artifacts/data/cleaned/swiggy_cleaned.csv
+
+  data_preprocessing:
+    cmd: python src/2_data_preprocessing.py
+    params:
+    - data_preprocessing.test_size
+    - data_preprocessing.random_state
+    deps:
+    - artifacts/data/cleaned/swiggy_cleaned.csv
+    - src/2_data_preprocessing.py
+    outs:
+    - artifacts/data/interim/train.csv
+    - artifacts/data/interim/test.csv
+
+  data_transformation:
+    cmd: python src/3_data_transformation.py
+    deps:
+    - artifacts/data/interim/train.csv
+    - artifacts/data/interim/test.csv
+    - src/3_data_transformation.py
+    outs:
+    - artifacts/data/processed/train_trans.csv
+    - artifacts/data/processed/test_trans.csv
+    - artifacts/models/preprocessor.joblib
+
+  train:
+    cmd: python src/4_model_trainer.py
+    deps:
+    - src/4_model_trainer.py
+    - artifacts/data/processed/train_trans.csv
+    params:
+    - train.Random_Forest
+    - train.LightGBM
+    outs:
+    - artifacts/models/model.joblib
+    - artifacts/models/power_transformer.joblib
+    - artifacts/models/stacking_regressor.joblib
+
+  # evaluation:
+  #   cmd: python src/models/model_evaluation.py
+  #   deps:
+  #   - src/models/model_evaluation.py
+  #   - models/model.joblib
+  #   - data/processed/train_trans.csv
+  #   - data/processed/test_trans.csv
+    
+  #   outs:
+  #   - run_information.json
+  #   always_changed: true
+
+  # model_registory:
+  #   cmd: python src/models/model_registory.py
+  #   deps:
+  #   - src/models/model_registory.py
+  #   - run_information.json
