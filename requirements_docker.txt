@@ -1,0 +1,9 @@
+pandas
+numpy
+scikit-learn
+nltk
+pyyaml
+joblib
+mlflow==2.15.0
+dagshub
+xgboost-cpu

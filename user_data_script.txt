@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Update the package list
+sudo apt-get update -y
+
+# Install dependencies (Ruby, wget, gdebi-core)
+sudo apt-get install ruby-full wget gdebi-core -y
+
+# Store DAGSHUB_TOKEN in environment
+echo "export DAGSHUB_TOKEN=YOUR_ACTUAL_DAGSHUB_TOKEN_HERE" >> /etc/environment
+source /etc/environment
+
+# Navigate to home directory and cleanup old installers
+cd /home/ubuntu
+rm -f install install.*
+
+# Download the CodeDeploy agent installer (latestv2) from Mumbai region
+wget https://aws-codedeploy-ap-south-1.s3.ap-south-1.amazonaws.com/latestv2/install
+
+# Make the installer executable
+chmod +x ./install
+
+# Install the CodeDeploy agent
+sudo ./install auto
+
+# Enable the agent to start on boot
+sudo systemctl enable codedeploy-agent
+
+# Start the CodeDeploy agent
+sudo systemctl start codedeploy-agent
