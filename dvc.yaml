@@ -43,20 +43,20 @@ stages:
     - artifacts/models/power_transformer.joblib
     - artifacts/models/stacking_regressor.joblib
 
-  # evaluation:
-  #   cmd: python src/models/model_evaluation.py
-  #   deps:
-  #   - src/models/model_evaluation.py
-  #   - models/model.joblib
-  #   - data/processed/train_trans.csv
-  #   - data/processed/test_trans.csv
+  evaluation:
+    cmd: python src/5_model_evaluation.py
+    deps:
+    - src/5_model_evaluation.py
+    - artifacts/models/model.joblib
+    - artifacts/data/processed/train_trans.csv
+    - artifacts/data/processed/test_trans.csv
     
-  #   outs:
-  #   - run_information.json
-  #   always_changed: true
+    outs:
+    - run_information.json
+    # always_changed: true
 
-  # model_registory:
-  #   cmd: python src/models/model_registory.py
-  #   deps:
-  #   - src/models/model_registory.py
-  #   - run_information.json
+  model_registory:
+    cmd: python src/6_register_model.py
+    deps:
+    - src/6_register_model.py
+    - run_information.json
