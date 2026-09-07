@@ -3,14 +3,12 @@ numpy
 scikit-learn
 joblib
 mlflow
-python-dotenv
 lightgbm
-xgboost
 dagshub
 pytest
 scipy
 fastapi
 uvicorn
 python-multipart
-plotly
 skops
+dvc-s3
