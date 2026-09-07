@@ -203,8 +203,8 @@ async def do_predictions(data: Data):
         # Convert input to DataFrame
         pred_data = pd.DataFrame([data.model_dump()])
         
-        # Clean the raw input data
-        cleaned_data = perform_data_cleaning(pred_data)
+        # Clean the raw input data (prediction mode - no target column)
+        cleaned_data = perform_data_cleaning(pred_data, is_training=False)
         
         # Get predictions
         predictions = model_pipe.predict(cleaned_data)[0]
@@ -222,6 +222,7 @@ async def do_predictions(data: Data):
             "success": False,
             "error": str(e)
         }, 500
+
 
 if __name__ == "__main__":
     uvicorn.run(app="app:app", host="0.0.0.0", port=8000, reload=False)

@@ -397,29 +397,54 @@ def drop_columns(data: pd.DataFrame, columns: list) -> pd.DataFrame:
         raise customexception(f"Failed to drop columns: {e}")
 
 
-def validate_cleaned_data(data: pd.DataFrame) -> None:
-    """
-    Validate the cleaned data.
+# def validate_cleaned_data(data: pd.DataFrame) -> None:
+#     """
+#     Validate the cleaned data.
     
-    Args:
-        data: Cleaned DataFrame to validate
+#     Args:
+#         data: Cleaned DataFrame to validate
         
-    Raises:
-        customexception: If validation fails
-    """
+#     Raises:
+#         customexception: If validation fails
+#     """
+#     try:
+#         if data.empty:
+#             raise customexception("Cleaned data is empty")
+        
+#         # Check required columns
+#         required_cols = ['distance', 'distance_type', 'time_taken']
+#         missing_cols = [col for col in required_cols if col not in data.columns]
+#         if missing_cols:
+#             raise customexception(f"Missing required columns in cleaned data: {missing_cols}")
+        
+#         # Check if time_taken has valid values
+#         if data['time_taken'].isnull().any():
+#             logger.warning(f"{data['time_taken'].isnull().sum()} rows have null time_taken")
+        
+#         # Check distance values
+#         if data['distance'].isnull().any():
+#             logger.warning(f"{data['distance'].isnull().sum()} rows have null distance")
+        
+#         logger.info("Cleaned data validation successful")
+        
+#     except customexception:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Error validating cleaned data: {e}")
+#         raise customexception(f"Data validation failed: {e}")
+
+
+def validate_cleaned_data(data: pd.DataFrame, check_target: bool = True) -> None:
     try:
         if data.empty:
             raise customexception("Cleaned data is empty")
         
-        # Check required columns
-        required_cols = ['distance', 'distance_type', 'time_taken']
-        missing_cols = [col for col in required_cols if col not in data.columns]
-        if missing_cols:
-            raise customexception(f"Missing required columns in cleaned data: {missing_cols}")
-        
-        # Check if time_taken has valid values
-        if data['time_taken'].isnull().any():
-            logger.warning(f"{data['time_taken'].isnull().sum()} rows have null time_taken")
+        # Only check target column if required
+        if check_target:
+            required_cols = ['distance', 'distance_type', 'time_taken']
+            missing_cols = [col for col in required_cols if col not in data.columns]
+            if missing_cols:
+                raise customexception(f"Missing required columns in cleaned data: {missing_cols}")
         
         # Check distance values
         if data['distance'].isnull().any():
