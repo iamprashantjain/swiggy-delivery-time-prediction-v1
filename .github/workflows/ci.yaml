@@ -1,0 +1,77 @@
+name: CI pipeline
+
+on: push
+
+jobs:
+  project-testing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v3
+
+      - name: setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: run pipeline
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          dvc repro
+
+      - name: Test Model Registry
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: quamrl-hoda
+        run: |
+          pytest tests/test_model_registry.py
+
+      - name: Test Model Performance
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: quamrl-hoda
+        run: |
+          pytest tests/test_model_perf.py
+
+      
+      - name: Promote model to production
+        if: success()
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: python src/7_promote_model.py
+
+      - name: Run api tests
+        if: success()
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: python -m unittest tests/test_api_endpoint.py
+
+      - name: Login to AWS ECR
+        if: success()
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 739275446561.dkr.ecr.ap-south-1.amazonaws.com
+
+      - name: Build Docker image
+        if: success()
+        run: |
+          docker build --no-cache -t prashant-ecr .
+
+      - name: Tag Docker image
+        if: success()
+        run: |
+          docker tag prashant-ecr:latest 739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
+
+      - name: Push Docker image to AWS ECR
+        if: success()
+        run: |
+          docker push 739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
