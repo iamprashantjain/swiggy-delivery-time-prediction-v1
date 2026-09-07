@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swiggy AI | Delivery Predictor Pro</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+  <header>
+    <div class="logo">
+      <i class="fas fa-bolt"></i>
+      <span>SWIGGY <span style="color: var(--primary);">OPS</span></span>
+    </div>
+
+    <nav class="nav-links">
+      <a href="#about">SYSTEM ARCHITECTURE</a>
+      <a href="https://www.kaggle.com/datasets/saurabhbadole/zomato-delivery-operations-analytics-dataset"
+        target="_blank">
+        <i class="fas fa-database" style="margin-right: 5px;"></i> DATASET
+      </a>
+    </nav>
+
+    <div class="header-output">
+      <div class="mode-badge">
+        <span class="dot"></span> {{ stage }}
+      </div>
+      <div class="live-result" id="headerResult">
+        <span class="label">ENGINE OUTPUT:</span>
+        <span class="value" id="headerValue">--</span><span class="unit">MIN</span>
+      </div>
+    </div>
+
+    <div class="mobile-menu-btn">
+      <i class="fas fa-bars"></i>
+    </div>
+  </header>
+
+  <main class="app-container">
+
+    <form id="predictionForm">
+      <!-- Top Row: Courier + AI Analytics -->
+      <div class="top-grid">
+        <div class="section-tile" data-aos style="margin-bottom: 0;">
+          <div class="section-title">
+            <i class="fas fa-id-badge"></i>
+            <h3>Courier Profile</h3>
+          </div>
+          <div class="grid-3">
+            <div class="input-box">
+              <label>Personnel ID</label>
+              <input type="text" name="Delivery_person_ID" placeholder="BANGRES19DEL01" required>
+            </div>
+            <div class="input-box">
+              <label>Personnel Age</label>
+              <input type="number" name="Delivery_person_Age" placeholder="28" required>
+            </div>
+            <div class="input-box">
+              <label>Trust Score</label>
+              <input type="number" step="0.1" name="Delivery_person_Ratings" placeholder="4.8" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-card" data-aos>
+          <div
+            style="font-size: 0.7rem; color: var(--primary); letter-spacing: 2px; font-weight: 800; margin-bottom: 20px;">
+            AI ANALYTICS ENGINE
+          </div>
+
+          <div id="placeholderView">
+            <div style="padding: 20px 0;">
+              <i class="fas fa-shield-halved" style="font-size: 2.5rem; color: var(--border); margin-bottom: 15px;"></i>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5;">
+                Engine Ready. <br>Awaiting courier telemetry.
+              </p>
+            </div>
+          </div>
+
+          <div id="resultContainer" style="display: none;">
+            <div class="time-circle" style="width: 140px; height: 140px;">
+              <div class="time-val" id="predictionResult" style="font-size: 3rem;">00</div>
+              <div class="time-unit">MINUTES</div>
+            </div>
+
+            <div class="stats-grid" style="margin-top: 15px;">
+              <div class="stat-item" style="padding: 10px;">
+                <span>RELIABILITY</span>
+                <strong style="font-size: 0.8rem;">HIGH</strong>
+              </div>
+              <div class="stat-item" style="padding: 10px;">
+                <span>LATENCY</span>
+                <strong style="font-size: 0.8rem;">OPTIMIZED</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rest of the Form -->
+      <div class="form-section" style="margin-top: 24px;">
+        <div class="section-tile" data-aos>
+          <div class="section-title">
+            <i class="fas fa-route"></i>
+            <h3>Logistics & Timeline</h3>
+          </div>
+          <div class="grid-3">
+            <div class="input-box">
+              <label>Order Reference</label>
+              <input type="text" name="ID" placeholder="0x12b4" required>
+            </div>
+            <div class="input-box">
+              <label>Order Date</label>
+              <input type="text" name="Order_Date" placeholder="22-02-2026" required>
+            </div>
+            <div class="input-box">
+              <label>Order Type</label>
+              <select name="Type_of_order" required>
+                <option value="Snack">Snack</option>
+                <option value="Meal">Meal</option>
+                <option value="Drinks">Drinks</option>
+                <option value="Buffet">Buffet</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 20px;">
+            <div class="input-box">
+              <label>Timestamp Ordered</label>
+              <input type="text" name="Time_Orderd" placeholder="18:30:00" required>
+            </div>
+            <div class="input-box">
+              <label>Timestamp Picked</label>
+              <input type="text" name="Time_Order_picked" placeholder="18:45:00" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-tile" data-aos>
+          <div class="section-title">
+            <i class="fas fa-map-location-dot"></i>
+            <h3>Geo-Intelligence</h3>
+          </div>
+          <div class="grid-2">
+            <div class="input-box">
+              <label>Restaurant Coordinates</label>
+              <div style="display: flex; gap: 10px;">
+                <input style="flex: 1;" type="number" step="any" name="Restaurant_latitude" placeholder="Lat" required>
+                <input style="flex: 1;" type="number" step="any" name="Restaurant_longitude" placeholder="Lon" required>
+              </div>
+            </div>
+            <div class="input-box">
+              <label>Target Coordinates</label>
+              <div style="display: flex; gap: 10px;">
+                <input style="flex: 1;" type="number" step="any" name="Delivery_location_latitude" placeholder="Lat"
+                  required>
+                <input style="flex: 1;" type="number" step="any" name="Delivery_location_longitude" placeholder="Lon"
+                  required>
+              </div>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 20px;">
+            <div class="input-box">
+              <label>City Tier</label>
+              <select name="City" required>
+                <option value="Metropolitian">Metropolitan</option>
+                <option value="Urban">Urban</option>
+                <option value="Semi-Urban">Semi-Urban</option>
+              </select>
+            </div>
+            <div class="input-box">
+              <label>Batch Size</label>
+              <input type="number" name="multiple_deliveries" value="0" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-tile" data-aos>
+          <div class="section-title">
+            <i class="fas fa-cloud-sun"></i>
+            <h3>Environmental Factors</h3>
+          </div>
+          <div class="grid-3">
+            <div class="input-box">
+              <label>Weather State</label>
+              <select name="Weatherconditions" required>
+                <option value="Sunny">Sunny</option>
+                <option value="Fog">Fog</option>
+                <option value="Windy">Windy</option>
+                <option value="Stormy">Stormy</option>
+                <option value="Sandstorms">Sandstorms</option>
+                <option value="Cloudy">Cloudy</option>
+              </select>
+            </div>
+            <div class="input-box">
+              <label>Traffic Density</label>
+              <select name="Road_traffic_density" required>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Jam">Jam</option>
+              </select>
+            </div>
+            <div class="input-box">
+              <label>Festival Day</label>
+              <select name="Festival" required>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 20px;">
+            <div class="input-box">
+              <label>Vehicle Fleet Type</label>
+              <select name="Type_of_vehicle" required>
+                <option value="motorcycle">Motorcycle</option>
+                <option value="scooter">Scooter</option>
+                <option value="electric_scooter">Electric Scooter</option>
+              </select>
+            </div>
+            <div class="input-box">
+              <label>Maintenance Tier</label>
+              <select name="Vehicle_condition" required>
+                <option value="2">Excellent (Rank 2)</option>
+                <option value="1">Average (Rank 1)</option>
+                <option value="0">Basic (Rank 0)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="predict-btn" id="submitBtn">
+          <i class="fas fa-brain"></i>
+          <span class="btn-text">INITIALIZE PREDICTION AI</span>
+          <div class="loader" id="loader"></div>
+        </button>
+      </div>
+    </form>
+
+    <!-- About & Data Architecture Section -->
+    <section id="about" class="section-tile about-section" data-aos style="margin-top: 24px;">
+      <div class="section-title">
+        <i class="fas fa-network-wired"></i>
+        <h3>Data Intel & Model Architecture</h3>
+      </div>
+      <div class="about-content">
+        <p>
+          This system is built upon a dataset of over 45,000 delivery records, specifically optimized to predict the
+          <strong>Target Variable (Output)</strong>: <span style="color: #2ecc71; font-weight: 800;">Time_taken
+            (min)</span>.
+        </p>
+
+        <div class="target-variable-box">
+          <div class="target-title">MODEL OUTPUT (TARGET)</div>
+          <h2 style="color: white; font-size: 1.8rem; font-weight: 900; margin-bottom: 8px;">Delivery Latency</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary);">Continuous numeric value representing total
+            duration from order pickup to customer drop-off.</p>
+        </div>
+
+        <div style="margin-top: 30px; font-weight: 700; color: white; font-size: 0.9rem;">FEATURE TAXONOMY (INPUTS)
+        </div>
+        <div class="data-grid">
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-user-clock"></i></div>
+            <div class="feature-info">
+              <h4>Personnel Metrics</h4>
+              <p>Age, ratings, and experience profile of the delivery courier.</p>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-map-pin"></i></div>
+            <div class="feature-info">
+              <h4>Geo-Spatial Data</h4>
+              <p>Haver-sine calculated distance between restaurant and destination.</p>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-traffic-light"></i></div>
+            <div class="feature-info">
+              <h4>Network Density</h4>
+              <p>Real-time traffic flow (Low, Medium, High, Jam) at time of order.</p>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-wind"></i></div>
+            <div class="feature-info">
+              <h4>Climate Inputs</h4>
+              <p>Atmospheric conditions like Fog, Stormy, or Sunny impact on mobility.</p>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin-top: 24px;">
+          The underlying model is a <strong>Stacking Regressor</strong> that combines multiple base learners to minimize
+          RMSE. Data is version-controlled via <strong>DVC</strong> and the training lifecycle is managed through
+          <strong>MLflow</strong>.
+        </p>
+
+        <a href="https://www.kaggle.com/datasets/saurabhbadole/zomato-delivery-operations-analytics-dataset"
+          target="_blank" class="dataset-link">
+          Access Raw Intelligence (Source Data) <i class="fas fa-external-link-alt"></i>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer style="text-align: center; padding: 40px; border-top: 1px solid var(--border); margin-top: 60px;">
+    <p style="color: var(--text-secondary); font-size: 0.8rem;">&copy; 2026 Swiggy Operations Intelligence Hub. All
+      rights reserved.</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="/static/js/main.js"></script>
+  <script>
+    document.querySelectorAll('[data-aos]').forEach((el, i) => {
+      setTimeout(() => el.classList.add('visible'), i * 150);
+    });
+  </script>
+</body>
+
+</html>
