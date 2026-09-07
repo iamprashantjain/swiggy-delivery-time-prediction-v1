@@ -1,77 +1,176 @@
-name: CI pipeline
+name: CI/CD Pipeline
 
-on: push
+on:
+  push:
 
 jobs:
   project-testing:
     runs-on: ubuntu-latest
 
     steps:
-      - name: checkout code
-        uses: actions/checkout@v3
 
-      - name: setup python
-        uses: actions/setup-python@v2
+      # -----------------------------
+      # Code Checkout
+      # -----------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -----------------------------
+      # Setup Python
+      # -----------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: install dependencies
+      # -----------------------------
+      # Install dependencies
+      # -----------------------------
+      - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          pip install -r requirements_docker.txt
 
-      - name: run pipeline
+      # -----------------------------
+      # Run DVC pipeline
+      # -----------------------------
+      - name: Run DVC pipeline
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           dvc repro
 
+      # -----------------------------
+      # Test Model Registry
+      # -----------------------------
       - name: Test Model Registry
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-          MLFLOW_TRACKING_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-          MLFLOW_TRACKING_USERNAME: quamrl-hoda
+          MLFLOW_TRACKING_USERNAME: iamprashantjain
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           pytest tests/test_model_registry.py
 
+      # -----------------------------
+      # Test Model Performance
+      # -----------------------------
       - name: Test Model Performance
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-          MLFLOW_TRACKING_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-          MLFLOW_TRACKING_USERNAME: quamrl-hoda
+          MLFLOW_TRACKING_USERNAME: iamprashantjain
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           pytest tests/test_model_perf.py
 
-      
+      # -----------------------------
+      # Promote model to Production
+      # -----------------------------
       - name: Promote model to production
+        if: success() #if above 2 tests are success then promote model to production
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: iamprashantjain
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          python src/7_promote_model.py
+
+      # -----------------------------
+      # Test FastAPI
+      # -----------------------------
+      - name: Run API tests
         if: success()
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-        run: python src/7_promote_model.py
+        run: |
+          python -m unittest tests/test_api_endpoint.py
 
-      - name: Run api tests
+      # -----------------------------
+      # Configure AWS
+      # -----------------------------
+      - name: Configure AWS credentials
         if: success()
-        env:
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-        run: python -m unittest tests/test_api_endpoint.py
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
+      # -----------------------------
+      # Login to ECR
+      # -----------------------------
       - name: Login to AWS ECR
         if: success()
         run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 739275446561.dkr.ecr.ap-south-1.amazonaws.com
+          aws ecr get-login-password --region ap-south-1 | \
+          docker login \
+          --username AWS \
+          --password-stdin 739275446561.dkr.ecr.ap-south-1.amazonaws.com
 
+      # -----------------------------
+      # Build Docker image
+      # -----------------------------
       - name: Build Docker image
         if: success()
         run: |
-          docker build --no-cache -t prashant-ecr .
+          docker build --no-cache \
+            -t delivery-time-prediction-api .
 
+      # -----------------------------
+      # Run Docker container
+      # -----------------------------
+      - name: Run Docker container
+        if: success()
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          docker run \
+            --name delivery-api \
+            -p 8000:8000 \
+            -e DAGSHUB_TOKEN="$DAGSHUB_TOKEN" \
+            -d \
+            delivery-time-prediction-api
+
+      # -----------------------------
+      # Wait for API
+      # -----------------------------
+      - name: Wait for API
+        if: success()
+        run: |
+          sleep 20
+          docker logs delivery-api
+
+      # -----------------------------
+      # Health check
+      # -----------------------------
+      - name: Test API health
+        if: success()
+        run: |
+          curl --fail http://localhost:8000/health
+
+      # -----------------------------
+      # Stop container
+      # -----------------------------
+      - name: Stop Docker container
+        if: always()
+        run: |
+          docker stop delivery-api || true
+          docker rm delivery-api || true
+
+      # -----------------------------
+      # Tag Docker image
+      # -----------------------------
       - name: Tag Docker image
         if: success()
         run: |
-          docker tag prashant-ecr:latest 739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
+          docker tag \
+            delivery-time-prediction-api:latest \
+            739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
 
+      # -----------------------------
+      # Push to ECR
+      # -----------------------------
       - name: Push Docker image to AWS ECR
         if: success()
         run: |
-          docker push 739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
+          docker push \
+            739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
