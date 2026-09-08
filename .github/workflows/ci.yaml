@@ -256,6 +256,6 @@ jobs:
             --application-name deliverytimepredictionapp \
             --deployment-config-name CodeDeployDefault.OneAtATime \
             --deployment-group-name deliverytimepredictiondeploymentgroup \
-            --s3-location bucket=my-mlops-project-demo,key=deployment.zip,bundleType=zip \
+            --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
             --file-exists-behavior OVERWRITE \
             --region ap-south-1
