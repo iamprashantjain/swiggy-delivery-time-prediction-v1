@@ -257,9 +257,9 @@ jobs:
         if: success()
         run: |
           aws deploy create-deployment \
-          --application-name deliverytimepredictionapp \
-          --deployment-config-name CodeDeployDefault.OneAtATime \
-          --deployment-group-name deliverytimepredictiondeploymentgroup \
-          --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
-          --file-exists-behavior OVERWRITE \
-          --region ap-south-1
+            --application-name deliverytimepredictionapp \
+            --deployment-config-name CodeDeployDefault.AllAtOnce \
+            --deployment-group-name deliverytimepredictiondeploymentgroup \
+            --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
+            --file-exists-behavior OVERWRITE \
+            --region ap-south-1
