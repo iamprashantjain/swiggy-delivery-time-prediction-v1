@@ -1,47 +1,28 @@
 #!/bin/bash
 
-# Exit immediately if any command fails
-set -e
-
 # Ensure that the script runs in non-interactive mode
 export DEBIAN_FRONTEND=noninteractive
 
-echo "Installing dependencies..."
-
-# Update package lists
+# Update the package lists
 sudo apt-get update -y
 
-# Install Docker and required utilities
-sudo apt-get install -y \
-    docker.io \
-    unzip \
-    curl
+# Install Docker
+sudo apt-get install -y docker.io
 
 # Start and enable Docker service
-sudo systemctl enable docker
 sudo systemctl start docker
+sudo systemctl enable docker
 
-# Install AWS CLI v2
-if ! command -v aws &> /dev/null
-then
-    echo "Installing AWS CLI..."
+# Install necessary utilities
+sudo apt-get install -y unzip curl
 
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
-        -o "/home/ubuntu/awscliv2.zip"
+# Download and install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/home/ubuntu/awscliv2.zip"
+unzip -o /home/ubuntu/awscliv2.zip -d /home/ubuntu/
+sudo /home/ubuntu/aws/install
 
-    unzip -o /home/ubuntu/awscliv2.zip \
-        -d /home/ubuntu/
-
-    sudo /home/ubuntu/aws/install
-
-    # Clean AWS CLI installation files
-    rm -rf /home/ubuntu/awscliv2.zip
-    rm -rf /home/ubuntu/aws
-else
-    echo "AWS CLI already installed."
-fi
-
-# Add ubuntu user to docker group
+# Add 'ubuntu' user to the 'docker' group to run Docker commands without 'sudo'
 sudo usermod -aG docker ubuntu
 
-echo "Dependencies installation completed."
+# Clean up the AWS CLI installation files
+rm -rf /home/ubuntu/awscliv2.zip /home/ubuntu/aws

@@ -6,17 +6,10 @@ sudo apt-get update -y
 # Install dependencies required for CodeDeploy
 sudo apt-get install -y ruby-full wget gdebi-core
 
-# Store DAGSHUB_TOKEN in environment
-echo "export DAGSHUB_TOKEN=YOUR_ACTUAL_DAGSHUB_TOKEN_HERE" >> /etc/environment
+#get additional packages
+sudo apt install wget -y
+cd /home /ubuntu
 
-# Load environment variables
-source /etc/environment
-
-# Navigate to home directory
-cd /home/ubuntu
-
-# Cleanup old CodeDeploy installers
-rm -f install install.*
 
 # Download CodeDeploy agent installer for Mumbai region
 wget https://aws-codedeploy-ap-south-1.s3.ap-south-1.amazonaws.com/latestv2/install

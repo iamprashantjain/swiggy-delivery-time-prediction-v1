@@ -231,3 +231,31 @@ jobs:
         run: |
           docker push \
             739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
+
+
+      # Zip the required files
+      - name: Zip files for deployment
+        if: success()
+        run: |
+            zip -r deployment.zip appspec.yml deploy/scripts/install_dependencies.sh deploy/scripts/start_docker.sh
+
+
+      # Upload the ZIP file to S3
+      - name: Upload ZIP to S3
+        if: success()
+        run: |
+            aws s3 cp deployment.zip s3://my-mlops-project-demo/ml-pipeline-demo/deployment.zip
+            
+            
+      # Deploy to AWS CodeDeploy using the uploaded ZIP file
+      - name: Deploy to AWS CodeDeploy
+        if: success()
+        run: |
+            aws configure set DAGSHUB_TOKEN  ${{ secrets.DAGSHUB_TOKEN }}
+            aws deploy create-deployment \
+            --application-name deliverytimepredictionapp \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --deployment-group-name deliverytimepredictiondeploymentgroup \
+            --s3-location bucket=my-mlops-project-demo,key=deployment.zip,bundleType=zip \
+            --file-exists-behavior OVERWRITE \
+            --region ap-south-1

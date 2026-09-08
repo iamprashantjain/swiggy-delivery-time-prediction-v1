@@ -1,45 +1,55 @@
 #!/bin/bash
 
-# Exit immediately if any command fails
 set -e
 
-# Variables
+# Configuration
+REGION="ap-south-1"
 ECR_REGISTRY="739275446561.dkr.ecr.ap-south-1.amazonaws.com"
 ECR_REPOSITORY="prashant-ecr"
 IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-CONTAINER_NAME="swiggy-delivery-api"
-REGION="ap-south-1"
+CONTAINER_NAME="delivery-time-prediction-api"
 
-echo "Logging into AWS ECR..."
 
-# Login to ECR
-aws ecr get-login-password --region "$REGION" | \
+# Login to AWS ECR
+echo "Logging in to AWS ECR..."
+
+aws ecr get-login-password \
+    --region "$REGION" | \
 docker login \
     --username AWS \
     --password-stdin "$ECR_REGISTRY"
 
-echo "Pulling latest Docker image..."
 
-# Pull latest image
+# Pull latest Docker image
+echo "Pulling latest Docker image..."
 docker pull "$IMAGE"
 
-echo "Stopping existing container if running..."
 
 # Stop existing container
+echo "Checking existing container..."
+
 if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
+
+    echo "Stopping existing container..."
+
     docker stop "$CONTAINER_NAME"
+
 fi
 
-echo "Removing existing container if present..."
 
 # Remove existing container
 if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
+
+    echo "Removing existing container..."
+
     docker rm "$CONTAINER_NAME"
+
 fi
 
+
+# Run new container
 echo "Starting new FastAPI container..."
 
-# Run FastAPI Docker container
 docker run -d \
     --name "$CONTAINER_NAME" \
     --restart always \
@@ -47,26 +57,32 @@ docker run -d \
     -e DAGSHUB_TOKEN="$DAGSHUB_TOKEN" \
     "$IMAGE"
 
-echo "Docker container started."
 
-echo "Waiting for FastAPI application to become healthy..."
+# Wait for FastAPI
+echo "Waiting for FastAPI to start..."
 
-# Wait for application startup
 for i in {1..30}
 do
-    if curl -f http://localhost:8000/health > /dev/null 2>&1
+
+    if curl -s --fail http://localhost:8000/health > /dev/null
     then
-        echo "FastAPI application is healthy."
+
+        echo "FastAPI is healthy!"
         exit 0
+
     fi
 
-    echo "Waiting for application... ($i/30)"
+    echo "Waiting... attempt $i/30"
+
     sleep 2
+
 done
 
-echo "FastAPI application failed health check."
 
-# Show container logs for debugging
+# Health check failed
+echo "FastAPI failed to start."
+
+echo "Container logs:"
 docker logs "$CONTAINER_NAME"
 
 exit 1
