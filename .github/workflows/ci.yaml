@@ -237,25 +237,29 @@ jobs:
       - name: Zip files for deployment
         if: success()
         run: |
-            zip -r deployment.zip appspec.yml deploy/scripts/install_dependencies.sh deploy/scripts/start_docker.sh
-
+          # Create .env file with DAGSHUB_TOKEN
+          echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" > deploy/scripts/.env
+          
+          # Make scripts executable
+          chmod +x deploy/scripts/*.sh
+          
+          # Create deployment package
+          zip -r deployment.zip appspec.yml deploy/scripts/
 
       # Upload the ZIP file to S3
       - name: Upload ZIP to S3
         if: success()
         run: |
-            aws s3 cp deployment.zip s3://my-mlops-project-demo/ml-pipeline-demo/deployment.zip
-            
-            
-      # Deploy to AWS CodeDeploy using the uploaded ZIP file
+          aws s3 cp deployment.zip s3://my-mlops-project-demo/ml-pipeline-demo/deployment.zip
+
+      # Deploy to AWS CodeDeploy
       - name: Deploy to AWS CodeDeploy
         if: success()
         run: |
-            aws configure set DAGSHUB_TOKEN  ${{ secrets.DAGSHUB_TOKEN }}
-            aws deploy create-deployment \
-            --application-name deliverytimepredictionapp \
-            --deployment-config-name CodeDeployDefault.OneAtATime \
-            --deployment-group-name deliverytimepredictiondeploymentgroup \
-            --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
-            --file-exists-behavior OVERWRITE \
-            --region ap-south-1
+          aws deploy create-deployment \
+          --application-name deliverytimepredictionapp \
+          --deployment-config-name CodeDeployDefault.OneAtATime \
+          --deployment-group-name deliverytimepredictiondeploymentgroup \
+          --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
+          --file-exists-behavior OVERWRITE \
+          --region ap-south-1
