@@ -4,7 +4,7 @@ import mlflow
 def promote_model():
     DAGSHUB_USERNAME = "iamprashantjain"
     DAGSHUB_TOKEN = os.getenv("DAGSHUB_TOKEN")
-    REPO_NAME = "ml-pipeline-demo-v1"
+    REPO_NAME = "swiggy-delivery-time-prediction-v1"
 
     if not DAGSHUB_TOKEN:
         raise ValueError("DAGSHUB_TOKEN is not set in the environment.")
