@@ -53,7 +53,7 @@ COPY app.py /app/
 COPY run_information.json /app/
 
 # Copy project modules
-COPY experiments /app/experiments/
+COPY experiments/data_clean_utils.py /app/experiments/data_clean_utils.py
 
 # Copy model/preprocessor
 COPY models /app/models/
