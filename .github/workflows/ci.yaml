@@ -15,6 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       # -----------------------------
       # Setup Python
       # -----------------------------
@@ -22,6 +23,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
+
+      # -----------------------------
+      # Setup pip cache
+      # -----------------------------
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements_docker.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
 
       # -----------------------------
       # Install dependencies
@@ -31,15 +45,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_docker.txt
 
-      
-      #dvc pull
+
+      # -----------------------------
+      # Configure AWS credentials
+      # -----------------------------
+      # Required for DVC S3 remote
+      # and later for AWS ECR
+      # -----------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+
+      # -----------------------------
+      # Pull data from DVC remote
+      # -----------------------------
       - name: Pull data from DVC remote
-        env:
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           dvc pull
-            
-      
+
+
       # -----------------------------
       # Run DVC pipeline
       # -----------------------------
@@ -48,6 +76,7 @@ jobs:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           dvc repro
+
 
       # -----------------------------
       # Test Model Registry
@@ -60,6 +89,7 @@ jobs:
         run: |
           pytest tests/test_model_registry.py
 
+
       # -----------------------------
       # Test Model Performance
       # -----------------------------
@@ -71,17 +101,19 @@ jobs:
         run: |
           pytest tests/test_model_perf.py
 
+
       # -----------------------------
       # Promote model to Production
       # -----------------------------
-      - name: Promote model to production
-        if: success() #if above 2 tests are success then promote model to production
+      - name: Promote model to Production
+        if: success()
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
           MLFLOW_TRACKING_USERNAME: iamprashantjain
           MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           python src/7_promote_model.py
+
 
       # -----------------------------
       # Test FastAPI
@@ -93,27 +125,18 @@ jobs:
         run: |
           python -m unittest tests/test_api_endpoint.py
 
-      # -----------------------------
-      # Configure AWS
-      # -----------------------------
-      - name: Configure AWS credentials
-        if: success()
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
 
       # -----------------------------
-      # Login to ECR
+      # Login to AWS ECR
       # -----------------------------
       - name: Login to AWS ECR
         if: success()
         run: |
           aws ecr get-login-password --region ap-south-1 | \
           docker login \
-          --username AWS \
-          --password-stdin 739275446561.dkr.ecr.ap-south-1.amazonaws.com
+            --username AWS \
+            --password-stdin 739275446561.dkr.ecr.ap-south-1.amazonaws.com
+
 
       # -----------------------------
       # Build Docker image
@@ -121,8 +144,9 @@ jobs:
       - name: Build Docker image
         if: success()
         run: |
-          docker build --no-cache \
+          docker build \
             -t delivery-time-prediction-api .
+
 
       # -----------------------------
       # Run Docker container
@@ -139,14 +163,19 @@ jobs:
             -d \
             delivery-time-prediction-api
 
+
       # -----------------------------
       # Wait for API
       # -----------------------------
       - name: Wait for API
         if: success()
         run: |
+          echo "Waiting for API to start..."
           sleep 20
+
+          echo "Docker container logs:"
           docker logs delivery-api
+
 
       # -----------------------------
       # Health check
@@ -156,14 +185,16 @@ jobs:
         run: |
           curl --fail http://localhost:8000/health
 
+
       # -----------------------------
-      # Stop container
+      # Stop Docker container
       # -----------------------------
       - name: Stop Docker container
         if: always()
         run: |
           docker stop delivery-api || true
           docker rm delivery-api || true
+
 
       # -----------------------------
       # Tag Docker image
@@ -175,8 +206,9 @@ jobs:
             delivery-time-prediction-api:latest \
             739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
 
+
       # -----------------------------
-      # Push to ECR
+      # Push Docker image to ECR
       # -----------------------------
       - name: Push Docker image to AWS ECR
         if: success()
