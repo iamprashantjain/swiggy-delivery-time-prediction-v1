@@ -8,6 +8,7 @@ import joblib
 import pandas as pd
 from sklearn.metrics import mean_absolute_error
 from src.mylogging import logging as logger
+from src.myexception import customexception
 import os
 from dotenv import load_dotenv;load_dotenv()
 

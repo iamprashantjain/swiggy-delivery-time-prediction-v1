@@ -2,6 +2,8 @@ import pandas as pd
 import requests
 from pathlib import Path
 import pytest
+from src.mylogging import logging as logger
+from src.myexception import customexception
 
 # path for data
 root_path = Path(__file__).parent.parent

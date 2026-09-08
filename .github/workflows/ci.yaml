@@ -123,7 +123,7 @@ jobs:
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
-          python -m unittest tests/test_api_endpoint.py
+          python -m pytest tests/test_api_endpoint.py
 
 
       # -----------------------------
