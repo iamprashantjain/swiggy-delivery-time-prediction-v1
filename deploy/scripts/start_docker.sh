@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Load DAGSHUB_TOKEN from .env file
 source /home/ubuntu/app/deploy/scripts/.env
