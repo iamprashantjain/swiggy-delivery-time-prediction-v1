@@ -1,30 +1,74 @@
 #!/bin/bash
+set -e
 
-# Update the package list
-sudo apt-get update -y
+echo "=== Updating packages ==="
+apt-get update -y
 
-# Install dependencies required for CodeDeploy
-sudo apt-get install -y ruby-full wget gdebi-core
+echo "=== Installing required packages ==="
+apt-get install -y ruby-full wget gdebi-core unzip curl
 
-#get additional packages
-sudo apt install wget -y
-cd /home /ubuntu
+# =========================================================
+# 1. Create 2 GB swap
+# =========================================================
 
+echo "=== Configuring 2 GB swap ==="
 
-# Download CodeDeploy agent installer for Mumbai region
-wget https://aws-codedeploy-ap-south-1.s3.ap-south-1.amazonaws.com/latestv2/install
+if ! swapon --show | grep -q "/swapfile"; then
 
-# Make installer executable
-chmod +x ./install
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
 
-# Install CodeDeploy agent
-sudo ./install auto
+    echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
 
-# Enable CodeDeploy agent on boot
-sudo systemctl enable codedeploy-agent
+    echo "2 GB swap created."
 
-# Start CodeDeploy agent
-sudo systemctl start codedeploy-agent
+else
+    echo "Swap already exists. Skipping."
 
-# Verify CodeDeploy agent
-sudo systemctl status codedeploy-agent --no-pager
+fi
+
+# =========================================================
+# 2. Install CodeDeploy Agent
+# =========================================================
+
+echo "=== Installing CodeDeploy Agent ==="
+
+cd /home/ubuntu
+
+wget -q \
+https://aws-codedeploy-ap-south-1.s3.ap-south-1.amazonaws.com/latestv2/install \
+-O install
+
+chmod +x install
+
+./install auto
+
+# =========================================================
+# 3. Enable and start CodeDeploy Agent
+# =========================================================
+
+echo "=== Starting CodeDeploy Agent ==="
+
+systemctl enable codedeploy-agent
+systemctl start codedeploy-agent
+
+# =========================================================
+# 4. Verify installation
+# =========================================================
+
+echo "=== CodeDeploy Agent Status ==="
+
+systemctl status codedeploy-agent --no-pager
+
+echo "=== Memory ==="
+free -h
+
+echo "=== Swap ==="
+swapon --show
+
+echo "=== Disk ==="
+df -h
+
+echo "=== EC2 bootstrap completed successfully ==="
