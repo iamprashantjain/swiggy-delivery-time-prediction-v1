@@ -1,29 +1,43 @@
 #!/bin/bash
 set -e
 
-# Ensure that the script runs in non-interactive mode
 export DEBIAN_FRONTEND=noninteractive
 
-# Update the package lists
-sudo apt-get update -y
+echo "=== Updating packages ==="
+apt-get update -y
 
-# Install Docker
-sudo apt-get install -y docker.io
+echo "=== Installing Docker ==="
+apt-get install -y docker.io
 
-# Start and enable Docker service
-sudo systemctl start docker
-sudo systemctl enable docker
+echo "=== Starting Docker ==="
+systemctl enable docker
+systemctl start docker
 
-# Install necessary utilities
-sudo apt-get install -y unzip curl
+echo "=== Installing utilities ==="
+apt-get install -y unzip curl
 
-# Download and install AWS CLI
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/home/ubuntu/awscliv2.zip"
-unzip -o /home/ubuntu/awscliv2.zip -d /home/ubuntu/
-sudo /home/ubuntu/aws/install
+echo "=== Installing AWS CLI ==="
 
-# Add 'ubuntu' user to the 'docker' group to run Docker commands without 'sudo'
-sudo usermod -aG docker ubuntu
+if command -v aws >/dev/null 2>&1; then
+    echo "AWS CLI already installed: $(aws --version)"
+else
+    curl -fsSL \
+        "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+        -o /tmp/awscliv2.zip
 
-# Clean up the AWS CLI installation files
-rm -rf /home/ubuntu/awscliv2.zip /home/ubuntu/aws
+    rm -rf /tmp/aws
+
+    unzip -q /tmp/awscliv2.zip -d /tmp
+
+    /tmp/aws/install
+
+    rm -rf /tmp/aws /tmp/awscliv2.zip
+fi
+
+echo "=== Docker version ==="
+docker --version
+
+echo "=== AWS CLI version ==="
+aws --version
+
+echo "=== Installation completed successfully ==="
