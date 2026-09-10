@@ -3,6 +3,10 @@ name: CI/CD Pipeline
 on:
   push:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   project-testing:
     runs-on: ubuntu-latest
@@ -15,7 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-
       # -----------------------------
       # Setup Python
       # -----------------------------
@@ -23,7 +26,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
 
       # -----------------------------
       # Setup pip cache
@@ -36,7 +38,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-
       # -----------------------------
       # Install dependencies
       # -----------------------------
@@ -45,13 +46,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_docker.txt
 
-
       # -----------------------------
       # Configure AWS credentials
-      # -----------------------------
       # Required for:
       # 1. DVC S3 remote
       # 2. AWS ECR
+      # 3. AWS ECS deployment
       # -----------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -60,14 +60,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-
       # -----------------------------
       # Pull data from DVC remote
       # -----------------------------
       - name: Pull data from DVC remote
         run: |
           dvc pull
-
 
       # -----------------------------
       # Run DVC pipeline
@@ -77,7 +75,6 @@ jobs:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           dvc repro
-
 
       # -----------------------------
       # Test Model Registry
@@ -90,7 +87,6 @@ jobs:
         run: |
           pytest tests/test_model_registry.py
 
-
       # -----------------------------
       # Test Model Performance
       # -----------------------------
@@ -102,12 +98,10 @@ jobs:
         run: |
           pytest tests/test_model_perf.py
 
-
       # -----------------------------
       # Promote model to Production
       # -----------------------------
       - name: Promote model to Production
-        if: success()
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
           MLFLOW_TRACKING_USERNAME: iamprashantjain
@@ -115,34 +109,28 @@ jobs:
         run: |
           python src/7_promote_model.py
 
-
       # -----------------------------
       # Login to AWS ECR
       # -----------------------------
       - name: Login to AWS ECR
-        if: success()
         run: |
           aws ecr get-login-password --region ap-south-1 | \
           docker login \
             --username AWS \
             --password-stdin 739275446561.dkr.ecr.ap-south-1.amazonaws.com
 
-
       # -----------------------------
       # Build Docker image
       # -----------------------------
       - name: Build Docker image
-        if: success()
         run: |
           docker build \
             -t delivery-time-prediction-api .
-
 
       # -----------------------------
       # Run Docker container
       # -----------------------------
       - name: Run Docker container
-        if: success()
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
@@ -153,12 +141,10 @@ jobs:
             -d \
             delivery-time-prediction-api
 
-
       # -----------------------------
       # Wait for API
       # -----------------------------
       - name: Wait for API
-        if: success()
         run: |
           echo "Waiting for API to start..."
 
@@ -181,26 +167,21 @@ jobs:
 
           exit 1
 
-
       # -----------------------------
       # Test FastAPI prediction endpoint
       # -----------------------------
       - name: Run API tests
-        if: success()
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           python -m pytest tests/test_api_endpoint.py
 
-
       # -----------------------------
       # Health check
       # -----------------------------
       - name: Test API health
-        if: success()
         run: |
           curl --fail http://localhost:8000/health
-
 
       # -----------------------------
       # Stop Docker container
@@ -211,29 +192,24 @@ jobs:
           docker stop delivery-api || true
           docker rm delivery-api || true
 
-
       # -----------------------------
       # Tag Docker image
       # -----------------------------
       - name: Tag Docker image
-        if: success()
         run: |
           docker tag \
             delivery-time-prediction-api:latest \
             739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
 
-
       # -----------------------------
       # Push Docker image to AWS ECR
       # -----------------------------
       - name: Push Docker image to AWS ECR
-        if: success()
         run: |
           docker push \
             739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
 
-
-
+      #------------------------------------------------------------------------------------------------------------------
       # ###### EC2 Deployment using ASG + LB + CodeDeploy ######
       # # Zip the required files
       # - name: Zip files for deployment
@@ -265,3 +241,27 @@ jobs:
       #       --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
       #       --file-exists-behavior OVERWRITE \
       #       --region ap-south-1
+
+
+      #------------------------------------------------------------------------------------------------------------------
+      ## Amazon ECS deployment
+      # Forces ECS to pull the new :latest image and start new tasks
+      # -----------------------------
+      - name: Deploy to Amazon ECS
+        run: |
+          aws ecs update-service \
+            --cluster swiggy-delivery-cluster \
+            --service swiggy-delivery-task-service-8s95wi76 \
+            --force-new-deployment \
+            --region ap-south-1
+
+      # -----------------------------
+      # Wait for ECS service to stabilize
+      # Blocks until new tasks are healthy (or fails on timeout)
+      # -----------------------------
+      - name: Wait for ECS service to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster swiggy-delivery-cluster \
+            --services swiggy-delivery-task-service-8s95wi76 \
+            --region ap-south-1
