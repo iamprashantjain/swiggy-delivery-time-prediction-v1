@@ -233,33 +233,35 @@ jobs:
             739275446561.dkr.ecr.ap-south-1.amazonaws.com/prashant-ecr:latest
 
 
-      # Zip the required files
-      - name: Zip files for deployment
-        if: success()
-        run: |
-          # Create .env file with DAGSHUB_TOKEN
-          echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" > deploy/scripts/.env
-          
-          # Make scripts executable
-          chmod +x deploy/scripts/*.sh
-          
-          # Create deployment package
-          zip -r deployment.zip appspec.yml deploy/scripts/
 
-      # Upload the ZIP file to S3
-      - name: Upload ZIP to S3
-        if: success()
-        run: |
-          aws s3 cp deployment.zip s3://my-mlops-project-demo/ml-pipeline-demo/deployment.zip
+      # ###### EC2 Deployment using ASG + LB + CodeDeploy ######
+      # # Zip the required files
+      # - name: Zip files for deployment
+      #   if: success()
+      #   run: |
+      #     # Create .env file with DAGSHUB_TOKEN
+      #     echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" > deploy/scripts/.env
+          
+      #     # Make scripts executable
+      #     chmod +x deploy/scripts/*.sh
+          
+      #     # Create deployment package
+      #     zip -r deployment.zip appspec.yml deploy/scripts/
 
-      # Deploy to AWS CodeDeploy
-      - name: Deploy to AWS CodeDeploy
-        if: success()
-        run: |
-          aws deploy create-deployment \
-            --application-name deliverytimepredictionapp \
-            --deployment-config-name CodeDeployDefault.AllAtOnce \
-            --deployment-group-name deliverytimepredictiondeploymentgroup \
-            --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
-            --file-exists-behavior OVERWRITE \
-            --region ap-south-1
+      # # Upload the ZIP file to S3
+      # - name: Upload ZIP to S3
+      #   if: success()
+      #   run: |
+      #     aws s3 cp deployment.zip s3://my-mlops-project-demo/ml-pipeline-demo/deployment.zip
+
+      # # Deploy to AWS CodeDeploy
+      # - name: Deploy to AWS CodeDeploy
+      #   if: success()
+      #   run: |
+      #     aws deploy create-deployment \
+      #       --application-name deliverytimepredictionapp \
+      #       --deployment-config-name CodeDeployDefault.AllAtOnce \
+      #       --deployment-group-name deliverytimepredictiondeploymentgroup \
+      #       --s3-location bucket=my-mlops-project-demo,key=ml-pipeline-demo/deployment.zip,bundleType=zip \
+      #       --file-exists-behavior OVERWRITE \
+      #       --region ap-south-1
